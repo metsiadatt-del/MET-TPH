@@ -1,4 +1,4 @@
-const CACHE='met-static-v7';
+const CACHE='met-static-v8';
 const FILES=['./','./index.html','./boot.js?v=7','./app.bundle.js?v=7','./styles.css?v=7','./assets/estedad-regular.ttf','./assets/estedad-bold.ttf','./src/rates.js','./src/app.js','./src/core.js','./src/store.js','./src/export.js','./market.html','./market.html?theme=light','./market.html?theme=dark','./manifest.webmanifest','./assets/brand.jpg','./assets/icon-180.png','./assets/icon-192.png','./assets/icon-512.png','./guide.html'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('met-static-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
