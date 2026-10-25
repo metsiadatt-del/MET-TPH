@@ -24,6 +24,7 @@ const originalTimeout=globalThis.setTimeout;globalThis.setTimeout=(fn,ms)=>origi
 await runInThisContext(readFileSync(new URL('../app.bundle.js',import.meta.url),'utf8'),{filename:'app.bundle.js'});
 const {load}=await import('../src/store.js');
 async function click(dataset){await handlers.get('click')({target:{closest(selector){if(selector==='[data-tab]')return dataset.tab?{dataset}:null;if(selector==='[data-action]')return dataset.action?{dataset,closest(){return null;}}:null;}},preventDefault(){}});await nextTurn();}
+async function change(dataset){await handlers.get('change')({target:dataset});await nextTurn();}
 async function submit(kind,values,id=''){const error=new Element('error'),button={disabled:false};const form={id:'editor',dataset:{form:kind,id},values,querySelector(selector){return selector==='.form-error'?error:button;}};await handlers.get('submit')({target:form,preventDefault(){}});assert.equal(error.textContent,'');}
 test('application renders all sections and completes account/trade/note/plan flows with DOM API doubles',async()=>{
   assert.match(elements.get('app').innerHTML,/هر معامله، یک قدم/);
@@ -49,13 +50,16 @@ test('application renders all sections and completes account/trade/note/plan flo
   assert.equal((await load()).notes.length,5);
   await click({tab:'plan'});await submit('step',{text:'بررسی روند'});await submit('step',{text:'تعیین ریسک'});data=await load();await click({action:'move-step',id:data.steps[1].id});assert.equal((await load()).steps[0].text,'تعیین ریسک');
   await click({tab:'money'});await submit('cost',{title:'آموزش',amount:'50',date:'2026-10-24'});assert.equal((await load()).costs[0].amount,50);
+  await click({tab:'checklists'});assert.match(elements.get('app').innerHTML,/چک‌لیست EUR\/GBP/);assert.match(elements.get('app').innerHTML,/مقایسهٔ سه تایم‌فریم/);assert.match(elements.get('app').innerHTML,/Trigger 15sec/);await change({dataset:{clValue:'M:0:GBP:0'},value:'bullish'});await change({dataset:{clDate:'M'},value:'2026-10-25'});await change({dataset:{clLower:'symbol'},value:'EURGBP'});await change({dataset:{clLower:'of'},checked:true});data=await load();const documentData=data.checklists[0];assert.equal(documentData.timeframes[0].rows[0].values.GBP[0],'bullish');assert.equal(documentData.timeframes[0].date,'2026-10-25');assert.equal(documentData.lower.symbol,'EURGBP');assert.equal(documentData.lower.of,true);
   await click({tab:'accounts'});assert.match(elements.get('app').innerHTML,/حساب اصلی/);assert.match(elements.get('app').innerHTML,/1,960/);
   for(const tab of ['home','money','mind','technical','plan','journal','accounts']){await click({tab});assert.ok(elements.get('app').innerHTML.includes('aria-current="page"'));assert.ok(!elements.get('app').innerHTML.includes('undefined'));}
   await click({action:'delete',kind:'trades',id:data.trades[0].id});assert.equal((await load()).trades.length,0);
   await click({action:'delete',kind:'accounts',id:account.id});assert.equal((await load()).accounts.length,0);
-  const rateTime=new Date().toISOString();globalThis.fetch=async()=>({ok:true,json:async()=>({success:true,price:2500000,time:rateTime})});
-  await click({action:'refresh-rate'});assert.equal((await load()).settings.rate,250000);assert.equal((await load()).settings.rateAt,rateTime);assert.equal((await load()).settings.rateSource,'priceto.day');
+  const rateTime=new Date().toISOString();globalThis.fetch=async()=>({ok:true,json:async()=>({data:[{symbol:'USD_IRR_FREE',price:250000,currency:'IRT',unit_size:1,timestamp:rateTime,stale:false}],meta:{unit:'toman',stale:false}})});
+  await click({action:'refresh-rate'});assert.equal((await load()).settings.rate,250000);assert.equal((await load()).settings.rateAt,rateTime);assert.equal((await load()).settings.rateSource,'iran-market');
   globalThis.fetch=async()=>{throw new TypeError('CORS test');};await click({action:'refresh-rate'});assert.equal((await load()).settings.rate,250000);
   await click({action:'currency'});assert.equal((await load()).settings.currency,'IRT');
+  await click({tab:'accounts'});await submit('account',{name:'حساب تبدیل',type:'دمو',deposit:'2',broker:'آزمایشی',date:'2026-10-24'});assert.ok(elements.get('app').innerHTML.includes(new Intl.NumberFormat('fa-IR',{maximumFractionDigits:2}).format(500000)));
+  await click({tab:'home'});const html=elements.get('app').innerHTML;assert.ok(!html.includes('src="./market.html'));const source=html.match(/id="market-frame"[^>]*src="([^"]+)"/)[1].replaceAll('&amp;','&');const widget=new URL(source);assert.equal(widget.origin,'https://www.tradingview-widget.com');assert.equal(widget.pathname,'/embed-widget/market-quotes/');const config=JSON.parse(decodeURIComponent(widget.hash.slice(1)));assert.deepEqual(config.symbolsGroups[0].symbols.map(s=>s.displayName),['XAUUSD','EURUSD','DXY','GBPUSD']);assert.equal(config.colorTheme,'light');assert.ok(!source.includes('حساب تبدیل'));await click({action:'theme'});assert.ok(elements.get('app').innerHTML.includes('colorTheme%22%3A%22dark'));await click({action:'refresh'});assert.match(elements.get('market-frame').src,/embed-widget\/market-quotes\/\?locale=en&refresh=/);
   for(const timer of timers)clearInterval(timer);
 });
