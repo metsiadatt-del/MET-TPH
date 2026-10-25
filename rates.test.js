@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseDollarRate,fetchDollarRate,DOLLAR_RATE_URL,parsePublicMarket,parseEconomicCalendar} from '../src/rates.js';
+import {parseDollarRate,fetchDollarRate,DOLLAR_RATE_URL,parsePublicMarket,parseEconomicCalendar,parseBankHolidays,parseMarketHolidays,fetchMarketHolidays} from '../src/rates.js';
 import {freshState,validateState} from '../src/core.js';
+test('holiday parsers separate bank holidays from economic events',()=>{assert.equal(parseMarketHolidays([{title:'Bank Holiday',date:'2026-12-25T00:00:00Z',country:'USD',impact:'Holiday'},{title:'CPI',date:'2026-12-25T00:00:00Z',impact:'High'}],new Date(now)).length,1);const items=parseBankHolidays({'england-and-wales':{events:[{title:'Christmas Day',date:'2026-12-25'},{title:'Past',date:'2026-01-01'}]}},new Date(now));assert.equal(items.length,1);assert.equal(items[0].source,'GOV.UK');assert.throws(()=>parseBankHolidays({}));});
+test('partial calendar outage reports incomplete holiday coverage',async()=>{const result=await fetchMarketHolidays(async url=>{if(url.includes('faireconomy'))throw Error('offline');return {ok:true,json:async()=>({'england-and-wales':{events:[{title:'Christmas Day',date:'2026-12-25'}]}})};},new Date(now));assert.equal(result.failed,1);assert.equal(result.items.length,1);});
 const now=Date.parse('2026-10-24T17:00:00Z');
 const row={symbol:'USD_IRR_FREE',currency:'IRT',unit_size:1,price:268500,timestamp:'2026-10-24T16:29:55.000Z',stale:false};
 const fixture={data:[{symbol:'EUR_IRR_FREE',price:300000},row],meta:{unit:'toman',stale:false}};

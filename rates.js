@@ -30,6 +30,18 @@ export function parseEconomicCalendar(data,now=new Date()){
   return data.filter(item=>item&&typeof item.title==='string'&&Number.isFinite(Date.parse(item.date))&&/([+-]\d{2}:\d{2}|Z)$/.test(item.date)&&iranDay(new Date(item.date))===today&&['High','Medium'].includes(item.impact)).map(item=>({title:item.title.slice(0,500),date:new Date(item.date).toISOString(),impact:item.impact,country:String(item.country||'').slice(0,20)})).sort((a,b)=>(a.impact==='High'?0:1)-(b.impact==='High'?0:1)||a.date.localeCompare(b.date));
 }
 export async function fetchEconomicCalendar(fetcher=fetch,now=new Date()){return parseEconomicCalendar(await publicJSON(ECONOMIC_CALENDAR_URL,fetcher),now);}
+export function parseMarketHolidays(data,now=new Date()){
+  if(!Array.isArray(data))throw Error('ساختار تعطیلات معتبر نیست.');
+  return data.filter(x=>x&&typeof x.title==='string'&&x.impact==='Holiday'&&Number.isFinite(Date.parse(x.date))).map(x=>({title:x.title.slice(0,500),date:new Date(x.date).toISOString().slice(0,10),country:String(x.country||'').slice(0,20),source:'Forex Factory'})).filter(x=>x.date>=new Date(now.getTime()+12600000).toISOString().slice(0,10)).sort((a,b)=>a.date.localeCompare(b.date));
+}
+export function parseBankHolidays(data,now=new Date()){
+  const items=data?.['england-and-wales']?.events;if(!Array.isArray(items))throw Error('ساختار تعطیلات بانکی معتبر نیست.');
+  return items.filter(x=>typeof x.title==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date>=now.toISOString().slice(0,10)).slice(0,6).map(x=>({title:x.title,date:x.date,country:'GBP',source:'GOV.UK'}));
+}
+export async function fetchMarketHolidays(fetcher=fetch,now=new Date()){
+  const results=await Promise.allSettled([publicJSON(ECONOMIC_CALENDAR_URL,fetcher).then(data=>parseMarketHolidays(data,now)),publicJSON('https://www.gov.uk/bank-holidays.json',fetcher).then(data=>parseBankHolidays(data,now))]);
+  return {items:results.filter(r=>r.status==='fulfilled').flatMap(r=>r.value).sort((a,b)=>a.date.localeCompare(b.date)),failed:results.filter(r=>r.status==='rejected').length};
+}
 export async function fetchDollarRate(fetcher=fetch,now=Date.now()) {
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
   try {
