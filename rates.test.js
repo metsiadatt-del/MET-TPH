@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {parseDollarRate,fetchDollarRate,DOLLAR_RATE_URL} from '../src/rates.js';
+import {freshState,validateState} from '../src/core.js';
+const now=Date.parse('2026-10-24T17:00:00Z');
+const fixture={success:true,price:2685000,high:2715000,low:2675000,time:'2026-10-24T16:29:55.000Z'};
+test('public rate schema converts rial to toman exactly once',()=>{assert.deepEqual(parseDollarRate(fixture,now),{rate:268500,rateAt:fixture.time,rateSource:'priceto.day'});});
+for(const [label,value] of [['unsuccessful',{...fixture,success:false}],['zero',{...fixture,price:0}],['negative',{...fixture,price:-1}],['numeric string',{...fixture,price:'2685000'}],['not finite',{...fixture,price:Infinity}],['missing timestamp',{...fixture,time:undefined}],['future',{...fixture,time:'2026-10-24T18:00:00Z'}],['stale',{...fixture,time:'2026-10-21T16:00:00Z'}]])test(`reject rate: ${label}`,()=>assert.throws(()=>parseDollarRate(value,now)));
+test('rate request is credential-free and sends no local account data',async()=>{let seen;const result=await fetchDollarRate(async(url,options)=>{seen={url,options};return {ok:true,json:async()=>fixture};},now);assert.equal(seen.url,DOLLAR_RATE_URL);assert.equal(seen.options.credentials,'omit');assert.equal(seen.options.referrerPolicy,'no-referrer');assert.equal(seen.options.body,undefined);assert.equal(result.rate,268500);});
+test('HTTP and network failure never manufacture a replacement rate',async()=>{await assert.rejects(fetchDollarRate(async()=>({ok:false}),now));await assert.rejects(fetchDollarRate(async()=>{throw new TypeError('CORS');},now));});
+test('theme and rate settings remain compatible with earlier backups',()=>{const state=freshState();delete state.settings.theme;delete state.settings.autoRate;delete state.settings.rateSource;assert.equal(validateState(state),state);state.settings.theme='dark';state.settings.autoRate=true;state.settings.rateSource='priceto.day';assert.equal(validateState(state),state);state.settings.theme='invalid';assert.throws(()=>validateState(state));});

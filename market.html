@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MET Market Prices</title><style>:root{color-scheme:light;--bg:#fff;--ink:#60777a}:root[data-theme=dark]{color-scheme:dark;--bg:#192d35;--ink:#b4cbd3}body{margin:0;background:var(--bg);font:12px Arial;color:var(--ink)}.tradingview-widget-container{min-height:95px}a{color:inherit}p{margin:8px;text-align:center}</style><script>document.documentElement.dataset.theme=new URLSearchParams(location.search).get('theme')==='dark'?'dark':'light';</script></head><body>
+<div class="tradingview-widget-container" id="market-widget"><div class="tradingview-widget-container__widget"></div><div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener noreferrer" target="_blank">Market prices by TradingView</a></div></div>
+<script>
+const script=document.createElement('script');
+script.src='https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js';script.async=true;
+script.textContent=JSON.stringify({symbols:[{proName:'OANDA:XAUUSD',title:'XAUUSD'},{proName:'FX:EURUSD',title:'EURUSD'},{proName:'TVC:DXY',title:'DXY'},{proName:'FX:GBPUSD',title:'GBPUSD'}],showSymbolLogo:true,isTransparent:false,displayMode:'adaptive',colorTheme:document.documentElement.dataset.theme,locale:'en'});
+document.getElementById('market-widget').appendChild(script);
+</script>
+<p>Online data may be delayed. If prices do not appear, check your connection or content blocker.</p>
+</body></html>

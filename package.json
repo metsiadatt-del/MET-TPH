@@ -1,0 +1,9 @@
+{
+  "name": "met-trading-journal",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Persian offline-first trading journal PWA",
+  "scripts": {"pack": "node pack.mjs", "test": "node pack.mjs --check && node --test tests/*.test.js", "check": "node pack.mjs --check && node --check boot.js && node --check app.bundle.js && node --check src/app.js && node --check src/core.js && node --check src/rates.js && node --check src/store.js && node --check src/export.js && node --check sw.js"},
+  "engines": {"node": ">=20"}
+}
