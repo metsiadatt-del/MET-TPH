@@ -10,7 +10,6 @@ export function parseDollarRate(data,now=Date.now()) {
   if(now-time>48*3600000)throw Error('نرخ دریافتی بیش از ۴۸ ساعت قدیمی است؛ نرخ قبلی حفظ شد.');
   return {rate:row.price,rateAt:new Date(time).toISOString(),rateSource:'iran-market'};
 }
-export const ECONOMIC_CALENDAR_URL='https://nfs.faireconomy.media/ff_calendar_thisweek.json';
 export const PUBLIC_MARKET_URL='https://iran-market.github.io/data/latest-toman.json';
 const publicSymbols={usd:'USD_IRR_FREE',gold18:'GOLD_18K_IRR',coin:'COIN_BAHAR_IRR',halfCoin:'COIN_HALF_IRR',quarterCoin:'COIN_QUARTER_IRR'};
 export function parsePublicMarket(data,now=Date.now()){
@@ -24,23 +23,13 @@ export function parsePublicMarket(data,now=Date.now()){
 }
 async function publicJSON(url,fetcher){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{const response=await fetcher(url,{signal:controller.signal,cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});if(!response.ok)throw Error('منبع آنلاین در دسترس نیست.');return await response.json();}finally{clearTimeout(timer);}}
 export async function fetchPublicMarket(fetcher=fetch){return parsePublicMarket(await publicJSON(PUBLIC_MARKET_URL,fetcher));}
-export function parseEconomicCalendar(data,now=new Date()){
-  if(!Array.isArray(data))throw Error('ساختار تقویم معتبر نیست.');
-  const iranDay=date=>new Date(date.getTime()+12600000).toISOString().slice(0,10),today=iranDay(now);
-  return data.filter(item=>item&&typeof item.title==='string'&&Number.isFinite(Date.parse(item.date))&&/([+-]\d{2}:\d{2}|Z)$/.test(item.date)&&iranDay(new Date(item.date))===today&&['High','Medium'].includes(item.impact)).map(item=>({title:item.title.slice(0,500),date:new Date(item.date).toISOString(),impact:item.impact,country:String(item.country||'').slice(0,20)})).sort((a,b)=>(a.impact==='High'?0:1)-(b.impact==='High'?0:1)||a.date.localeCompare(b.date));
-}
-export async function fetchEconomicCalendar(fetcher=fetch,now=new Date()){return parseEconomicCalendar(await publicJSON(ECONOMIC_CALENDAR_URL,fetcher),now);}
-export function parseMarketHolidays(data,now=new Date()){
-  if(!Array.isArray(data))throw Error('ساختار تعطیلات معتبر نیست.');
-  return data.filter(x=>x&&typeof x.title==='string'&&x.impact==='Holiday'&&Number.isFinite(Date.parse(x.date))).map(x=>({title:x.title.slice(0,500),date:new Date(x.date).toISOString().slice(0,10),country:String(x.country||'').slice(0,20),source:'Forex Factory'})).filter(x=>x.date>=new Date(now.getTime()+12600000).toISOString().slice(0,10)).sort((a,b)=>a.date.localeCompare(b.date));
-}
-export function parseBankHolidays(data,now=new Date()){
-  const items=data?.['england-and-wales']?.events;if(!Array.isArray(items))throw Error('ساختار تعطیلات بانکی معتبر نیست.');
-  return items.filter(x=>typeof x.title==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date>=now.toISOString().slice(0,10)).slice(0,6).map(x=>({title:x.title,date:x.date,country:'GBP',source:'GOV.UK'}));
-}
-export async function fetchMarketHolidays(fetcher=fetch,now=new Date()){
-  const results=await Promise.allSettled([publicJSON(ECONOMIC_CALENDAR_URL,fetcher).then(data=>parseMarketHolidays(data,now)),publicJSON('https://www.gov.uk/bank-holidays.json',fetcher).then(data=>parseBankHolidays(data,now))]);
-  return {items:results.filter(r=>r.status==='fulfilled').flatMap(r=>r.value).sort((a,b)=>a.date.localeCompare(b.date)),failed:results.filter(r=>r.status==='rejected').length};
+export function upcomingMarketHolidays(now=new Date()){
+  const today=new Date(now.getTime()+12600000).toISOString().slice(0,10);
+  return [
+    {title:'شکرگزاری آمریکا',date:'2026-11-26',end:'2026-11-28',note:'۲۶–۲۸ نوامبر · ساعات ویژهٔ ارزها و فلزات'},
+    {title:'کریسمس',date:'2026-12-24',end:'2026-12-26',note:'۲۴–۲۶ دسامبر · ساعات ویژه و تعطیلی کریسمس'},
+    {title:'سال نو میلادی',date:'2026-12-31',end:'2027-01-01',note:'۳۱ دسامبر–۱ ژانویه · ساعات ویژه و تعطیلی سال نو'}
+  ].filter(item=>item.end>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
 }
 export async function fetchDollarRate(fetcher=fetch,now=Date.now()) {
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);

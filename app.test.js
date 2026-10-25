@@ -28,7 +28,7 @@ async function change(dataset){await handlers.get('change')({target:dataset});aw
 async function submit(kind,values,id=''){const error=new Element('error'),button={disabled:false};const form={id:'editor',dataset:{form:kind,id},values,querySelector(selector){return selector==='.form-error'?error:button;}};await handlers.get('submit')({target:form,preventDefault(){}});assert.equal(error.textContent,'');}
 test('application renders all sections and completes account/trade/note/plan flows with DOM API doubles',async()=>{
   assert.match(elements.get('app').innerHTML,/هر معامله، یک قدم/);
-  assert.match(elements.get('app').innerHTML,/Market watch/);
+  assert.match(elements.get('app').innerHTML,/Market watch/);assert.ok(!elements.get('app').innerHTML.includes('forexfactory'));const news=elements.get('app').innerHTML.match(/title="TradingView — اخبار با اهمیت بالا"[^>]+src="([^"]+)/)[1];assert.equal(JSON.parse(decodeURIComponent(new URL(news.replaceAll('&amp;','&')).hash.slice(1))).importanceFilter,'1');
   assert.match(elements.get('app').innerHTML,/مدیریت مالی/);
   assert.match(elements.get('app').innerHTML,/ژورنال‌نویسی/);
   assert.ok(!elements.get('app').innerHTML.includes('class="avatar"'));
@@ -53,12 +53,20 @@ test('application renders all sections and completes account/trade/note/plan flo
   await click({tab:'money'});await submit('cost',{title:'آموزش',amount:'50',date:'2026-10-24'});assert.equal((await load()).costs[0].amount,50);
   await click({tab:'checklists'});assert.match(elements.get('app').innerHTML,/DXY\/EURUSD\/GBPUSD/);assert.match(elements.get('app').innerHTML,/مقایسهٔ سه تایم‌فریم/);assert.match(elements.get('app').innerHTML,/ENTRY/);
   assert.ok((await load()).checklists[0].timeframes[0].time);
-  await change({dataset:{clValue:'M:0:GBPUSD:0'},value:'bullish'});await change({dataset:{clDate:'M'},value:'2026-10-25'});await change({dataset:{clTime:'M'},value:'14:30'});await change({dataset:{clSymbolContext:'M:GBPUSD'},value:'context محفوظ'});
+  await change({dataset:{clValue:'M:0:GBPUSD:0'},value:'Yes'});await change({dataset:{clDate:'M'},value:'2026-10-25'});await change({dataset:{clTime:'M'},value:'14:30'});await change({dataset:{clSymbolContext:'M:GBPUSD'},value:'context محفوظ'});
   await change({dataset:{globalText:'technical:technical-1'},value:'بررسی روند'});await change({dataset:{globalDone:'technical:technical-1'},checked:true});assert.equal((await load()).globalChecklists[0].items[0].done,true);
-  await click({action:'new-review'});await change({dataset:{clValue:'M:0:GBPUSD:0'},value:'bearish'});data=await load();assert.equal(data.checklists[0].timeframes[0].history[0].rows[0].values.GBPUSD[0],'bullish');assert.equal(data.checklists[0].timeframes[0].rows[0].values.GBPUSD[0],'bearish');
-  await click({action:'older-review'});assert.match(elements.get('app').innerHTML,/فقط خواندنی/);await change({dataset:{clValue:'M:0:GBPUSD:0'},value:'ignored'});assert.equal((await load()).checklists[0].timeframes[0].rows[0].values.GBPUSD[0],'bearish');await click({action:'newer-review'});
+  await click({action:'new-review'});await change({dataset:{clValue:'M:0:GBPUSD:0'},value:'No'});data=await load();assert.equal(data.checklists[0].timeframes[0].history[0].rows[0].values.GBPUSD[0],'Yes');assert.equal(data.checklists[0].timeframes[0].rows[0].values.GBPUSD[0],'No');
+  await click({action:'older-review'});assert.match(elements.get('app').innerHTML,/فقط خواندنی/);await change({dataset:{clValue:'M:0:GBPUSD:0'},value:'ignored'});assert.equal((await load()).checklists[0].timeframes[0].rows[0].values.GBPUSD[0],'No');await click({action:'newer-review'});
   await click({action:'select-timeframe',id:'M15'});assert.match(elements.get('app').innerHTML,/Hunt-Shift/);assert.equal((await load()).checklists[0].selectedTimeframe,'M15');
   await click({action:'new-setup'});await submit('setup',{title:'Gold setup',symbol0:'XAUUSD',symbol1:'EURUSD',symbol2:'DXY'});data=await load();assert.equal(data.checklists.length,2);const setup=data.checklists[1];assert.equal(data.checklistSelected,setup.id);await change({dataset:{clValue:'M:0:XAUUSD:0'},value:'Yes'});await click({action:'edit-setup'});await submit('setup',{title:'Revised setup',symbol0:'GBPUSD',symbol1:'EURUSD',symbol2:'DXY'},setup.id);assert.equal((await load()).checklists[1].timeframes[0].rows[0].values.GBPUSD[0],'Yes');
+  await click({action:'select-timeframe',id:'ENTRY'});
+  await change({dataset:{clValue:'ENTRY:0:GBPUSD:0'},value:'✓'});
+  await change({dataset:{clEnabled:'ENTRY:GBPUSD'},checked:false});
+  await change({dataset:{clValue:'ENTRY:0:GBPUSD:0'},value:'✕'});
+  await change({dataset:{clSymbolContext:'ENTRY:GBPUSD'},value:'blocked'});
+  let entry=(await load()).checklists[1].timeframes.find(t=>t.id==='ENTRY');assert.equal(entry.enabled.GBPUSD,false);assert.equal(entry.rows[0].values.GBPUSD[0],'✓');assert.equal(entry.rows[0].contexts.GBPUSD,'');
+  assert.match(elements.get('app').innerHTML,/data-cl-value="ENTRY:0:GBPUSD:0" disabled/);
+  await change({dataset:{clEnabled:'ENTRY:GBPUSD'},checked:true});await change({dataset:{clValue:'ENTRY:0:GBPUSD:0'},value:'✕'});assert.equal((await load()).checklists[1].timeframes.find(t=>t.id==='ENTRY').rows[0].values.GBPUSD[0],'✕');
   await click({action:'delete-global-item',group:'technical',id:'technical-1'});assert.equal((await load()).globalChecklists[0].items[0].text,'');
   await click({tab:'accounts'});assert.match(elements.get('app').innerHTML,/حساب اصلی/);assert.match(elements.get('app').innerHTML,/1,960/);
   for(const tab of ['home','money','education','plan','journal','accounts']){await click({tab});assert.ok(elements.get('app').innerHTML.includes('aria-current="page"'));assert.ok(!elements.get('app').innerHTML.includes('undefined'));}
