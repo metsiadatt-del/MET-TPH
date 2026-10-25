@@ -26,8 +26,8 @@ const finite = n => typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=1e12;
 export function validateState(s) {
   const fail=()=>{throw Error('ساختار فایل پشتیبان معتبر نیست.');};
   if(!s||s.version!==1)fail();
-  if(!Array.isArray(s.checklists)){s.checklists=freshState().checklists;s.checklistSelected='eur-gbp';}
-  if(!s.checklistSelected&&s.checklists.length)s.checklistSelected=s.checklists[0].id;
+  if(!Array.isArray(s.checklists)||!s.checklists.length){s.checklists=freshState().checklists;s.checklistSelected='eur-gbp';}
+  if(!s.checklistSelected||!s.checklists.some(d=>d&&d.id===s.checklistSelected))s.checklistSelected=s.checklists[0].id;
   for(const key of ['accounts','trades','notes','costs','steps','symbols','checklist','checklists','quotes'])if(!Array.isArray(s[key])||s[key].length>20000)fail();
   for(const key of ['accounts','trades','notes','costs','steps','checklist']) {const ids=new Set();for(const row of s[key]){if(!row||!text(row.id,100)||!row.id||ids.has(row.id))fail();ids.add(row.id);}}
   for(const a of s.accounts)if(!text(a.name,200)||!text(a.type,100)||!text(a.broker,200)||!finite(a.deposit)||a.deposit<0||!validDate(a.date))fail();
